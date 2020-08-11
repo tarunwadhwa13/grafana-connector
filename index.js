@@ -40,18 +40,20 @@ const AGG_NAME = cfg.aggregation.toUpperCase();
 if (!allowAggregations.includes(AGG_NAME)) {
   throw new Error(
     `Invalid service configuration. Unknown aggregation function: ${
-      cfg.aggregation
+    cfg.aggregation
     }, allowed are ${allowAggregations.join(", ")}`
   );
 }
 
+// set aggregation function
 const AGG = AGG_NAME === "NONE" ? null : aql.literal(AGG_NAME);
-const TARGETS = cfg.collections.split(",").map(str => str.trim());
+const COLLECTIONS_EXPOSED = cfg.collections.split(",").map(str => str.trim());
 
-for (const target of TARGETS) {
-  if (!db._collection(target)) {
+// validate collections
+for (const collection of COLLECTIONS_EXPOSED) {
+  if (!db._collection(collection)) {
     throw new Error(
-      `Invalid service configuration. Unknown collection: ${target}`
+      `Invalid service configuration. Unknown collection: ${collection}`
     );
   }
 }
@@ -59,6 +61,7 @@ for (const target of TARGETS) {
 const router = createRouter();
 context.use(router);
 
+// Test for authentication
 router.use((req, res, next) => {
   const auth = getAuth(req);
   if (!auth || !auth.basic) {
@@ -74,6 +77,7 @@ router.use((req, res, next) => {
   next();
 });
 
+
 router
   .get("/", (_req, res) => {
     res.json({ ok: true });
@@ -85,7 +89,7 @@ router
 
 router
   .post("/search", (_req, res) => {
-    res.json(TARGETS);
+    res.json(COLLECTIONS_EXPOSED);
   })
   .summary("List the available metrics")
   .description(
@@ -144,7 +148,7 @@ router
       } else {
         response.push({
           target,
-          type: "timeserie",
+          type: "timeseries",
           datapoints
         });
       }
@@ -168,7 +172,7 @@ router
             joi
               .object({
                 target: joi.allow(...TARGETS).required(),
-                type: joi.allow("timeserie", "table").required()
+                type: joi.allow("timeseries", "table").required()
               })
               .required()
           )
